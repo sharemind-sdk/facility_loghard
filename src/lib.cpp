@@ -11,6 +11,8 @@
 #include <unordered_map>
 
 
+namespace {
+
 struct Facility: ::SharemindModuleApi0x1Facility {
     inline Facility(void * const facility, void * const context = nullptr)
         : ::SharemindModuleApi0x1Facility{facility, context}
@@ -281,6 +283,8 @@ void parseConf(ModuleData & data, ::std::string & c) {
 inline ModuleData::ModuleData(char const * const conf)
     : parsedConfData{conf ? conf : ""}
 { parseConf(*this, parsedConfData); }
+
+} // anonymous namespace
 
 extern "C" {
 
