@@ -29,6 +29,7 @@ ADD_COMPILE_OPTIONS(
 INCLUDE(CheckCXXCompilerFlag)
 FUNCTION(CHECK_ADD_COMPILER_FLAG flag)
     STRING(SUBSTRING "${flag}" 1 -1 FlagName)
+    STRING(REPLACE "+" "X" FlagName "${FlagName}")
     CHECK_CXX_COMPILER_FLAG("${flag}" C_COMPILER_HAS_${FlagName}_FLAG)
     IF(C_COMPILER_HAS_${FlagName}_FLAG)
         ADD_COMPILE_OPTIONS("${flag}")
@@ -38,6 +39,10 @@ CHECK_ADD_COMPILER_FLAG("-Weverything")
 CHECK_ADD_COMPILER_FLAG("-Wlogical-op")
 CHECK_ADD_COMPILER_FLAG("-Wno-covered-switch-default")
 CHECK_ADD_COMPILER_FLAG("-Wno-padded")
+CHECK_ADD_COMPILER_FLAG("-Wno-c++98-compat")
+CHECK_ADD_COMPILER_FLAG("-Wno-c++98-compat-pedantic")
+CHECK_ADD_COMPILER_FLAG("-Wno-gnu-case-range")
+CHECK_ADD_COMPILER_FLAG("-Wno-weak-vtables")
 
 ADD_DEFINITIONS(
     ${LogHard_DEFINITIONS}
