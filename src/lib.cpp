@@ -6,6 +6,7 @@
 #include <LogHard/Logger.h>
 #include <map>
 #include <memory>
+#include <sharemind/compiler-support/GccPR54526.h>
 #include <sharemind/libfmodapi/api_0x1.h>
 #include <string>
 #include <unordered_map>
@@ -24,18 +25,20 @@ using FacilityPointer = ::std::shared_ptr<Facility>;
 struct BackendFacility: Facility {
     inline BackendFacility()
         : Facility{new ::LogHard::Backend{}}
-        , backend{static_cast<::LogHard::Backend *>(this->facility)}
+        , backend{static_cast< SHAREMIND_GCCPR54526::LogHard::Backend *>(
+                      this->facility)}
     {}
-    ::std::unique_ptr<::LogHard::Backend> const backend;
+    ::std::unique_ptr<SHAREMIND_GCCPR54526::LogHard::Backend> const backend;
 };
 struct LoggerFacility: Facility {
     template <typename ... T>
     inline LoggerFacility(::LogHard::Backend & backend,
                           T && ... prefix)
         : Facility{new ::LogHard::Logger{backend, ::std::forward<T>(prefix)...}}
-        , logger{static_cast<::LogHard::Logger *>(this->facility)}
+        , logger{static_cast<SHAREMIND_GCCPR54526 ::LogHard::Logger *>(
+                     this->facility)}
     {}
-    ::std::unique_ptr<::LogHard::Logger> logger;
+    ::std::unique_ptr<SHAREMIND_GCCPR54526::LogHard::Logger> logger;
 };
 struct AppenderFacility: Facility {
     inline AppenderFacility(::LogHard::Backend::Appender * a)
@@ -45,7 +48,8 @@ struct AppenderFacility: Facility {
     ::LogHard::Backend::Appender * const appender;
 };
 
-using FacilityMap = ::std::unordered_map<::std::string, FacilityPointer>;
+using FacilityMap = ::std::unordered_map<SHAREMIND_GCCPR54526::std::string,
+                                         FacilityPointer>;
 
 struct ModuleData {
     inline ModuleData(char const * const conf);
