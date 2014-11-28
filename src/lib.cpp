@@ -101,14 +101,14 @@ private: /* Fields: */
     if (TOKENIZE_END)
         goto tokenize_end;
 
-    while (::std::isspace(*str)) {
+    while (::std::isspace(static_cast<unsigned char>(*str))) {
 tokenize_skipWhiteSpace:
         if ((++str, TOKENIZE_END))
             goto tokenize_end;
     }
 
     // Handle tokens:
-    assert(!::std::isspace(*str));
+    assert(!::std::isspace(static_cast<unsigned char>(*str)));
 
     if ((*str == '"') || (*str == '\'')) {
         // Handle quoted strings:
@@ -127,7 +127,7 @@ tokenize_skipWhiteSpace:
         }
         if (TOKENIZE_END)
             goto tokenize_end;
-        if (::std::isspace(*str))
+        if (::std::isspace(static_cast<unsigned char>(*str)))
             goto tokenize_skipWhiteSpace;
         throw ParseException{"Garbage after quoted string!"};
     } else {
@@ -138,7 +138,7 @@ tokenize_skipWhiteSpace:
                 tokens.emplace_back(start, false);
                 goto tokenize_end;
             }
-        } while (!::std::isspace(*str));
+        } while (!::std::isspace(static_cast<unsigned char>(*str)));
         *str = '\0';
         tokens.emplace_back(start, false);
         goto tokenize_skipWhiteSpace;
