@@ -92,7 +92,6 @@ private: /* Fields: */
 #define TOKENIZE_END (str == end)
 ::std::list<Token> tokenize(char * const begin, char * const end) {
     ::std::list<Token> tokens;
-    char * start;
     char * str{begin};
     if (TOKENIZE_END)
         goto tokenize_end;
@@ -109,7 +108,7 @@ tokenize_skipWhiteSpace:
     if ((*str == '"') || (*str == '\'')) {
         // Handle quoted strings:
         char const quote = *str;
-        start = ++str;
+        const char * const start = ++str;
         for (;;) {
             if (TOKENIZE_END)
                 throw ParseException{"Unterminated quoted string!"};
@@ -128,7 +127,7 @@ tokenize_skipWhiteSpace:
         throw ParseException{"Garbage after quoted string!"};
     } else {
         // Handle normal strings:
-        start = str;
+        const char * const start = str;
         do {
             if ((++str, TOKENIZE_END)) {
                 tokens.emplace_back(start, false);
