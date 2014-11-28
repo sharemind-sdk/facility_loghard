@@ -196,7 +196,8 @@ tokenize_end:
     PLACE        ::= PLACETYPE <facilityName>
     LOGGER       ::= logger <logPrefix> PLACE+
     FILEOPENMODE ::= append | overwrite
-    APPENDER     ::= file FILEOPENMODE <fileName> PLACE*
+    FILEAPPENDER ::= file FILEOPENMODE <fileName> PLACE*
+    APPENDER     ::= FILEAPPENDER | stderr | stdout
     BACKEND      ::= backend PLACE* LOGGER+ APPENDER+ (LOGGER | APPENDER)*
     CONFIG       ::= BACKEND*
 */
@@ -228,6 +229,11 @@ void parseConf(ModuleData & data, ::std::string & c) {
             throw ParseException{"A \"logger\" was not registered as a " \
                                  "facility!"}; \
         } else (void) 0
+#define LOGGERSCHECK \
+    if (!backendHasLoggers) { \
+        throw ParseException{"At least one \"logger\" must be defined for a " \
+                             "backend\" before appenders can be defined!"}; \
+    } else (void) 0
 
     goto parseConf_handleBackend;
 
@@ -263,10 +269,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
         PLACE(pd)
         PLACE(pdpi)
         } else if (ISKEYWORD("file")) {
-            if (!backendHasLoggers)
-                throw ParseException{"At least one \"logger\" must be defined "
-                                     "for a \"backend\" before appenders can "
-                                     "be defined!"};
+            LOGGERSCHECK;
             LOGGERPLACECHECK;
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
@@ -290,6 +293,23 @@ void parseConf(ModuleData & data, ::std::string & c) {
             lastBackend->addAppender(fa);
             backendHasAppenders = true;
             lastType = LT_APPENDER;
+    #define STANDARDAPPENDER(pFILE) \
+        } else if (ISKEYWORD(#pFILE)) { \
+            LOGGERSCHECK; \
+            LOGGERPLACECHECK; \
+            using CFA = ::LogHard::Backend::CFileAppender; \
+            CFA * const cfa = new CFA{pFILE}; \
+            try { \
+                lastFacility.reset(new AppenderFacility{cfa}); \
+            } catch (...) { \
+                delete cfa; \
+                throw; \
+            } \
+            lastBackend->addAppender(cfa); \
+            backendHasAppenders = true; \
+            lastType = LT_APPENDER;
+        STANDARDAPPENDER(stderr)
+        STANDARDAPPENDER(stdout)
         } else if (ISKEYWORD("logger")) {
             if (!backendHasPlace) {
                 data.anonBackends.emplace(lastFacility);
