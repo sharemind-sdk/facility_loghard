@@ -56,15 +56,6 @@ struct ModuleData {
     ::std::string parsedConfData;
 };
 
-inline char const * tokenEnd(char const * start) noexcept {
-    assert(start);
-    while (*start != '\0' && *start != ' ') {
-        start++;
-        assert(start);
-    }
-    return start;
-}
-
 class Token {
 
 public: /* Methods: */
