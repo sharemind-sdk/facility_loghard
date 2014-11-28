@@ -298,11 +298,11 @@ void parseConf(ModuleData & data, ::std::string & c) {
             backendHasAppenders = true;
             lastType = LT_APPENDER;
     #define STANDARDAPPENDER(pFILE) \
-        } else if (ISKEYWORD(#pFILE)) { \
+        } else if (ISKEYWORD("std" #pFILE)) { \
             LOGGERSCHECK; \
             LOGGERPLACECHECK; \
             using CFA = ::LogHard::Backend::CFileAppender; \
-            CFA * const cfa = new CFA{pFILE}; \
+            CFA * const cfa = new CFA{std ## pFILE}; \
             try { \
                 lastFacility.reset(new AppenderFacility{cfa}); \
             } catch (...) { \
@@ -312,8 +312,8 @@ void parseConf(ModuleData & data, ::std::string & c) {
             lastBackend->addAppender(cfa); \
             backendHasAppenders = true; \
             lastType = LT_APPENDER;
-        STANDARDAPPENDER(stderr)
-        STANDARDAPPENDER(stdout)
+        STANDARDAPPENDER(err)
+        STANDARDAPPENDER(out)
         } else if (ISKEYWORD("logger")) {
             if (!backendHasPlace) {
                 data.anonBackends.emplace(lastFacility);
