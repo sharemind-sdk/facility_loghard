@@ -6,6 +6,7 @@
 #include <LogHard/Logger.h>
 #include <map>
 #include <memory>
+#include <sharemind/compiler-support/GccPR44436.h>
 #include <sharemind/compiler-support/GccPR54526.h>
 #include <sharemind/libfmodapi/api_0x1.h>
 #include <string>
@@ -259,7 +260,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
             if ((++t, PARSE_END)) \
                 throw ParseException{"No " #where " facility name given!"}; \
             auto const r = \
-                    data.where ## Facilities.emplace( \
+                    data.where ## Facilities.SHAREMIND_GCCPR44436_METHOD( \
                             FacilityMap::value_type{t->str(), lastFacility}); \
             if (!r.second) \
                 throw ParseException{"A " #where " facility with this name " \
@@ -316,7 +317,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
         STANDARDAPPENDER(out)
         } else if (ISKEYWORD("logger")) {
             if (!backendHasPlace) {
-                data.anonBackends.emplace(lastFacility);
+                data.anonBackends.SHAREMIND_GCCPR44436_METHOD(lastFacility);
                 backendHasPlace = true;
             }
             LOGGERPLACECHECK;
