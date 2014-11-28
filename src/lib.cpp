@@ -280,18 +280,14 @@ void parseConf(ModuleData & data, ::std::string & c) {
             }();
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
-            {
-                FA * const fa = new FA{t->str(), openMode};
-                try {
-                    lastFacility.reset(new AppenderFacility{fa});
-                } catch (...) {
-                    delete fa;
-                    throw;
-                }
+            FA * const fa = new FA{t->str(), openMode};
+            try {
+                lastFacility.reset(new AppenderFacility{fa});
+            } catch (...) {
+                delete fa;
+                throw;
             }
-            lastBackend->addAppender(
-                        static_cast<AppenderFacility *>(
-                            lastFacility.get())->appender);
+            lastBackend->addAppender(fa);
             backendHasAppenders = true;
             lastType = LT_APPENDER;
         } else if (ISKEYWORD("logger")) {
