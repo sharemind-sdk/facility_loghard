@@ -60,10 +60,6 @@ class Token {
 
 public: /* Methods: */
 
-    Token(Token &&) = default;
-    Token(const Token &) = default;
-    Token & operator=(Token &&) = default;
-    Token & operator=(const Token &) = default;
     inline Token(char const * const begin,
                  bool const isQuoted)
         : m_str{begin}
