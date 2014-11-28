@@ -281,6 +281,7 @@ extern "C" {
 
 SHAREMIND_FACILITY_MODULE_API_MODULE_INFO("LogHardFacility", 1u, 1u);
 
+SHAREMIND_FACILITY_MODULE_API_0x1_INITIALIZER(c,errorStr);
 SHAREMIND_FACILITY_MODULE_API_0x1_INITIALIZER(c,errorStr) {
     assert(c);
     try {
@@ -297,6 +298,7 @@ SHAREMIND_FACILITY_MODULE_API_0x1_INITIALIZER(c,errorStr) {
     }
 }
 
+SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c);
 SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c) {
     assert(c);
     assert(c->moduleHandle);
@@ -304,7 +306,9 @@ SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c) {
 }
 
 #define STUFF(name,NAME) \
-    SHAREMIND_FACILITY_MODULE_API_0x1_FIND_ ## NAME ## _FACILITY(c, signature) { \
+    SHAREMIND_FACILITY_MODULE_API_0x1_FIND_ ## NAME ## _FACILITY(c, signature);\
+    SHAREMIND_FACILITY_MODULE_API_0x1_FIND_ ## NAME ## _FACILITY(c, signature) \
+    { \
         assert(c); \
         assert(c->moduleHandle); \
         auto const & map = \
