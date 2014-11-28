@@ -108,16 +108,64 @@ tokenize_skipWhiteSpace:
     if ((*str == '"') || (*str == '\'')) {
         // Handle quoted strings:
         char const quote = *str;
-        const char * const start = ++str;
+        char * writePtr = ++str;
+        const char * const start = writePtr;
+
+        #define FAILONEND \
+            if (TOKENIZE_END) { \
+                throw ParseException{"Unterminated quoted string!"}; \
+            } else (void) false
         for (;;) {
-            if (TOKENIZE_END)
-                throw ParseException{"Unterminated quoted string!"};
+            FAILONEND;
             if (*str == quote) {
-                *str = '\0';
+                *writePtr = '\0';
                 tokens.emplace_back(start, true);
                 ++str;
                 break;
+            } else if (*str == '\\') {
+                ++str;
+                FAILONEND;
+                #define writeEscape(c,e) case c: *writePtr = e; break
+                switch (*str) {
+                    writeEscape('a', '\a'); writeEscape('b', '\b');
+                    writeEscape('f', '\f'); writeEscape('n', '\n');
+                    writeEscape('r', '\r'); writeEscape('t', '\t');
+                    writeEscape('v', '\v'); writeEscape('\\', '\\');
+                    writeEscape('?', '\?'); writeEscape('\"', '\"');
+                    writeEscape('\'', '\'');
+                    case 'x':
+                    {
+                        ++str;
+                        FAILONEND;
+                        char base;
+                        #define GETHEXBASE(base) \
+                            switch (*str) { \
+                                case '0' ... '9': base = '0'; break; \
+                                case 'a' ... 'f': base = 'a' - 10; break; \
+                                case 'A' ... 'F': base = 'A' - 10; break; \
+                                default: \
+                                    throw ParseException{ \
+                                            "Invalid \\x escape!"}; \
+                            }
+                        GETHEXBASE(base)
+                        unsigned const v =
+                                static_cast<unsigned>(*str - base) * 16u;
+                        ++str;
+                        FAILONEND;
+                        GETHEXBASE(base)
+                        (*writePtr) =
+                                static_cast<char>(static_cast<unsigned char>(
+                                    v + static_cast<unsigned>(*str - base)));
+                        break;
+                    }
+                    default:
+                        *writePtr = *str;
+                        break;
+                }
+            } else if (writePtr != str) {
+                *writePtr = *str;
             }
+            ++writePtr;
             ++str;
         }
         if (TOKENIZE_END)
