@@ -82,16 +82,16 @@ FILE(GLOB_RECURSE SHAREMIND_FACILITY_LOGHARD_SOURCES
 IF(APPLE)
     # OS X bundle does not accept VERSION numbers, so build regular .dylib instead
     # Newer OS X can also dynamically load shared libraries similarly to Linux
-    ADD_LIBRARY("sharemind_facility_loghard" SHARED
-                ${SHAREMIND_FACILITY_LOGHARD_SOURCES}
-                ${SHAREMIND_FACILITY_LOGHARD_HEADERS}
-    )
+    SET(BUILD_TYPE SHARED)
 ELSE()
-    ADD_LIBRARY("sharemind_facility_loghard" MODULE
-                ${SHAREMIND_FACILITY_LOGHARD_SOURCES}
-                ${SHAREMIND_FACILITY_LOGHARD_HEADERS}
-    )
+    SET(BUILD_TYPE MODULE)
 ENDIF()
+    
+ADD_LIBRARY("sharemind_facility_loghard" ${BUILD_TYPE}
+            ${SHAREMIND_FACILITY_LOGHARD_SOURCES}
+            ${SHAREMIND_FACILITY_LOGHARD_HEADERS}
+)
+
 STRING(REGEX REPLACE "(([^\\.]+\\.[^\\.]+)\\.).*" "\\2"
        SHAREMIND_FACILITY_LOGHARD_SOVERSION "${SHAREMIND_FACILITY_LOGHARD_VERSION}")
 SET_TARGET_PROPERTIES("sharemind_facility_loghard" PROPERTIES
