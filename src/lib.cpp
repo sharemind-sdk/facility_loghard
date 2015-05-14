@@ -307,14 +307,12 @@ void parseConf(ModuleData & data, ::std::string & c) {
             }();
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
-            FA * const fa = new FA{t->str(), openMode};
-            try {
-                lastFacility.reset(new AppenderFacility{fa});
-            } catch (...) {
-                delete fa;
-                throw;
-            }
-            lastBackend->addAppender(fa);
+            ;
+            lastFacility.reset(
+                        new AppenderFacility{
+                            &lastBackend->addAppender(
+                                std::unique_ptr<FA>{
+                                    new FA{t->str(), openMode}})});
             backendHasAppenders = true;
             lastType = LT_APPENDER;
     #define STANDARDAPPENDER(pFILE) \
@@ -322,14 +320,10 @@ void parseConf(ModuleData & data, ::std::string & c) {
             LOGGERSCHECK; \
             LOGGERPLACECHECK; \
             using CFA = ::LogHard::Backend::CFileAppender; \
-            CFA * const cfa = new CFA{std ## pFILE}; \
-            try { \
-                lastFacility.reset(new AppenderFacility{cfa}); \
-            } catch (...) { \
-                delete cfa; \
-                throw; \
-            } \
-            lastBackend->addAppender(cfa); \
+            lastFacility.reset( \
+                    new AppenderFacility{ \
+                        &lastBackend->addAppender( \
+                            std::unique_ptr<CFA>{new CFA{std ## pFILE}})}); \
             backendHasAppenders = true; \
             lastType = LT_APPENDER;
         STANDARDAPPENDER(err)
