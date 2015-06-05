@@ -117,12 +117,13 @@ private: /* Fields: */
 ::std::list<Token> tokenize(char * const begin, char * const end) {
     ::std::list<Token> tokens;
     char * str{begin};
-    if (TOKENIZE_END)
+    if TOKENIZE_END
         goto tokenize_end;
 
     while (::std::isspace(static_cast<unsigned char>(*str))) {
 tokenize_skipWhiteSpace:
-        if ((++str, TOKENIZE_END))
+        ++str;
+        if TOKENIZE_END
             goto tokenize_end;
     }
 
@@ -136,7 +137,7 @@ tokenize_skipWhiteSpace:
         const char * const start = writePtr;
 
         #define FAILONEND \
-            if (TOKENIZE_END) { \
+            if TOKENIZE_END { \
                 throw ParseException{"Unterminated quoted string!"}; \
             } else (void) false
         for (;;) {
@@ -192,7 +193,7 @@ tokenize_skipWhiteSpace:
             ++writePtr;
             ++str;
         }
-        if (TOKENIZE_END)
+        if TOKENIZE_END
             goto tokenize_end;
         if (::std::isspace(static_cast<unsigned char>(*str)))
             goto tokenize_skipWhiteSpace;
@@ -201,7 +202,8 @@ tokenize_skipWhiteSpace:
         // Handle normal strings:
         const char * const start = str;
         do {
-            if ((++str, TOKENIZE_END)) {
+            ++str;
+            if TOKENIZE_END {
                 tokens.emplace_back(start, false);
                 goto tokenize_end;
             }
