@@ -45,20 +45,23 @@ using FacilityPointer = ::std::shared_ptr<Facility>;
 struct BackendFacility: Facility {
     inline BackendFacility()
         : Facility{new ::LogHard::Backend{}}
-        , backend{static_cast< SHAREMIND_GCCPR54526::LogHard::Backend *>(
+        , backend{
+              static_cast< SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Backend *>(
                       this->facility)}
     {}
-    ::std::unique_ptr<SHAREMIND_GCCPR54526::LogHard::Backend> const backend;
+    ::std::unique_ptr<SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Backend> const
+        backend;
 };
 struct LoggerFacility: Facility {
     template <typename ... T>
     inline LoggerFacility(::LogHard::Backend & backend,
                           T && ... prefix)
         : Facility{new ::LogHard::Logger{backend, ::std::forward<T>(prefix)...}}
-        , logger{static_cast<SHAREMIND_GCCPR54526 ::LogHard::Logger *>(
+        , logger{
+              static_cast<SHAREMIND_GCCPR54526_WORKAROUND ::LogHard::Logger *>(
                      this->facility)}
     {}
-    ::std::unique_ptr<SHAREMIND_GCCPR54526::LogHard::Logger> logger;
+    ::std::unique_ptr<SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Logger> logger;
 };
 struct AppenderFacility: Facility {
     inline AppenderFacility(::LogHard::Backend::Appender * a)
@@ -68,8 +71,9 @@ struct AppenderFacility: Facility {
     ::LogHard::Backend::Appender * const appender;
 };
 
-using FacilityMap = ::std::unordered_map<SHAREMIND_GCCPR54526::std::string,
-                                         FacilityPointer>;
+using FacilityMap =
+        ::std::unordered_map<SHAREMIND_GCCPR54526_WORKAROUND::std::string,
+                             FacilityPointer>;
 
 struct ModuleData {
     inline ModuleData(char const * const conf);
