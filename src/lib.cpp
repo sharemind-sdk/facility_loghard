@@ -22,6 +22,8 @@
 #include <cstring>
 #include <list>
 #include <LogHard/Backend.h>
+#include <LogHard/CFileAppender.h>
+#include <LogHard/FileAppender.h>
 #include <LogHard/Logger.h>
 #include <map>
 #include <memory>
@@ -43,33 +45,33 @@ struct Facility: ::SharemindModuleApi0x1Facility {
 };
 using FacilityPointer = ::std::shared_ptr<Facility>;
 
-struct BackendFacility: Facility {
-    inline BackendFacility()
-        : Facility{new ::LogHard::Backend{}}
-        , backend{
-              static_cast< SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Backend *>(
-                      this->facility)}
-    {}
-    ::std::unique_ptr<SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Backend> const
-        backend;
+struct BackendFacilityBase {
+    std::shared_ptr<LogHard::Backend> backend{
+        std::make_shared<LogHard::Backend>()};
 };
-struct LoggerFacility: Facility {
+
+struct BackendFacility: BackendFacilityBase, Facility {
+    inline BackendFacility() : Facility{backend.get()} {}
+};
+
+struct LoggerFacilityBase { std::shared_ptr<LogHard::Logger> logger; };
+struct LoggerFacility: LoggerFacilityBase, Facility {
     template <typename ... T>
-    inline LoggerFacility(::LogHard::Backend & backend,
+    inline LoggerFacility(std::shared_ptr<LogHard::Backend> backend,
                           T && ... prefix)
-        : Facility{new ::LogHard::Logger{backend, ::std::forward<T>(prefix)...}}
-        , logger{
-              static_cast<SHAREMIND_GCCPR54526_WORKAROUND ::LogHard::Logger *>(
-                     this->facility)}
+        : LoggerFacilityBase{
+              std::make_shared<LogHard::Logger>(backend,
+                                                std::forward<T>(prefix)...)}
+        , Facility(logger.get())
     {}
     ::std::unique_ptr<SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Logger> logger;
 };
 struct AppenderFacility: Facility {
-    inline AppenderFacility(::LogHard::Backend::Appender * a)
-        : Facility{a}
-        , appender{a}
+    inline AppenderFacility(std::shared_ptr<LogHard::Appender> a)
+        : Facility(a.get())
+        , appender(std::move(a))
     {}
-    ::LogHard::Backend::Appender * const appender;
+    std::shared_ptr<LogHard::Appender> const appender;
 };
 
 using FacilityMap =
@@ -240,7 +242,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
     auto const tend = tokens.cend();
     auto t = tokens.cbegin();
 
-    ::LogHard::Backend * lastBackend;
+    std::shared_ptr<LogHard::Backend> lastBackend;
     bool backendHasPlace;
     bool backendHasLoggers;
     bool backendHasAppenders;
@@ -279,7 +281,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
             backendHasAppenders = false;
             BackendFacility * const bf = new BackendFacility{};
             lastFacility.reset(bf);
-            lastBackend = bf->backend.get();
+            lastBackend = bf->backend;
             lastType = LT_BACKEND;
     #define PLACE(where) \
         } else if (ISKEYWORD(#where)) { \
@@ -304,33 +306,34 @@ void parseConf(ModuleData & data, ::std::string & c) {
             LOGGERPLACECHECK;
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
-            using FA = ::LogHard::Backend::FileAppender;
-            FA::OpenMode const openMode = [t] {
+            LogHard::FileAppender::OpenMode const openMode([t] {
                 if (ISKEYWORD("append"))
-                    return FA::APPEND;
+                    return LogHard::FileAppender::APPEND;
                 if (ISKEYWORD("overwrite"))
-                    return FA::OVERWRITE;
+                    return LogHard::FileAppender::OVERWRITE;
                 throw ParseException{"Invalid \"file\" open mode given!"};
-            }();
+            }());
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
             ;
-            lastFacility.reset(
-                        new AppenderFacility{
-                            &lastBackend->addAppender(
-                                std::unique_ptr<FA>{
-                                    new FA{t->str(), openMode}})});
+            {
+                auto fileAppender(
+                            std::make_shared<LogHard::FileAppender>(t->str(),
+                                                                    openMode));
+                lastBackend->addAppender(fileAppender);
+                lastFacility = std::make_shared<AppenderFacility>(fileAppender);
+            }
             backendHasAppenders = true;
             lastType = LT_APPENDER;
     #define STANDARDAPPENDER(pFILE) \
         } else if (ISKEYWORD("std" #pFILE)) { \
             LOGGERSCHECK; \
             LOGGERPLACECHECK; \
-            using CFA = ::LogHard::Backend::CFileAppender; \
-            lastFacility.reset( \
-                    new AppenderFacility{ \
-                        &lastBackend->addAppender( \
-                            std::unique_ptr<CFA>{new CFA{std ## pFILE}})}); \
+            { \
+                auto a(std::make_shared<LogHard::CFileAppender>(std ## pFILE));\
+                lastBackend->addAppender(a); \
+                lastFacility = std::make_shared<AppenderFacility>(a); \
+            } \
             backendHasAppenders = true; \
             lastType = LT_APPENDER;
         STANDARDAPPENDER(err)
@@ -343,7 +346,8 @@ void parseConf(ModuleData & data, ::std::string & c) {
             LOGGERPLACECHECK;
             if ((++t, PARSE_END))
                 throw ParseException{"Incomplete \"logger\" definition!"};
-            lastFacility.reset(new LoggerFacility{*lastBackend, t->str()});
+            lastFacility =
+                    std::make_shared<LoggerFacility>(lastBackend, t->str());
             lastType = LT_LOGGER;
             backendHasLoggers = true;
             loggerHasPlace = false;
