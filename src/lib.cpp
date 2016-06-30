@@ -64,7 +64,6 @@ struct LoggerFacility: LoggerFacilityBase, Facility {
                                                 std::forward<T>(prefix)...)}
         , Facility(logger.get())
     {}
-    ::std::unique_ptr<SHAREMIND_GCCPR54526_WORKAROUND::LogHard::Logger> logger;
 };
 struct AppenderFacility: Facility {
     inline AppenderFacility(std::shared_ptr<LogHard::Appender> a)
