@@ -269,7 +269,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
 
     goto parseConf_handleBackend;
 
-    while ((++t, !PARSE_END)) {
+    while ((static_cast<void>(++t), !PARSE_END)) {
         assert(lastType != LT_NONE);
         if (ISKEYWORD("backend")) {
             if (!backendHasAppenders)
@@ -284,7 +284,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
             lastType = LT_BACKEND;
     #define PLACE(where) \
         } else if (ISKEYWORD(#where)) { \
-            if ((++t, PARSE_END)) \
+            if ((static_cast<void>(++t), PARSE_END)) \
                 throw ParseException{"No " #where " facility name given!"}; \
             auto const r = \
                     data.where ## Facilities.SHAREMIND_GCCPR44436_METHOD( \
@@ -303,7 +303,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
         } else if (ISKEYWORD("file")) {
             LOGGERSCHECK;
             LOGGERPLACECHECK;
-            if ((++t, PARSE_END))
+            if ((static_cast<void>(++t), PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
             LogHard::FileAppender::OpenMode const openMode([t] {
                 if (ISKEYWORD("append"))
@@ -312,7 +312,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
                     return LogHard::FileAppender::OVERWRITE;
                 throw ParseException{"Invalid \"file\" open mode given!"};
             }());
-            if ((++t, PARSE_END))
+            if ((static_cast<void>(++t), PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
             ;
             {
@@ -343,7 +343,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
                 backendHasPlace = true;
             }
             LOGGERPLACECHECK;
-            if ((++t, PARSE_END))
+            if ((static_cast<void>(++t), PARSE_END))
                 throw ParseException{"Incomplete \"logger\" definition!"};
             lastFacility =
                     std::make_shared<LoggerFacility>(lastBackend, t->str());
