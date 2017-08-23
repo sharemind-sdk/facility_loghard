@@ -27,7 +27,7 @@ INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 
 FIND_PACKAGE(LogHard 0.1.0 REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
-FIND_PACKAGE(SharemindLibfmodapi 0.1.0 REQUIRED)
+FIND_PACKAGE(SharemindLibFModapi 0.1.0 REQUIRED)
 
 ADD_COMPILE_OPTIONS(
   "-std=c++11" "-Wall" "-Wextra" "-O2"
@@ -58,7 +58,7 @@ CHECK_ADD_COMPILER_FLAG("-Wno-weak-vtables")
 ADD_DEFINITIONS(
     ${LogHard_DEFINITIONS}
     ${SharemindCxxHeaders_DEFINITIONS}
-    ${SharemindLibfmodapi_DEFINITIONS}
+    ${SharemindLibFModapi_DEFINITIONS}
     "-D__STDC_LIMIT_MACROS"
     "-D_XOPEN_SOURCE=700"
 )
@@ -66,7 +66,7 @@ ADD_DEFINITIONS(
 INCLUDE_DIRECTORIES(
     ${LogHard_INCLUDE_DIRS}
     ${SharemindCxxHeaders_INCLUDE_DIRS}
-    ${SharemindLibfmodapi_INCLUDE_DIRS}
+    ${SharemindLibFModapi_INCLUDE_DIRS}
 )
 
 
