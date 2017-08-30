@@ -26,8 +26,6 @@ INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 FIND_PACKAGE(SharemindCMakeHelpers REQUIRED)
 
 SharemindSetProjectVersion()
-SET(SharemindFacilityLogHard_COMPAT_VERSION
-    "${SharemindFacilityLogHard_VERSION}")
 
 
 FIND_PACKAGE(LogHard 0.1.0 REQUIRED)
