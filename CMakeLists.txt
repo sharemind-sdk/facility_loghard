@@ -30,7 +30,7 @@ SharemindSetProjectVersion()
 
 FIND_PACKAGE(LogHard 0.1.0 REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
-FIND_PACKAGE(SharemindLibFModapi 0.1.0 REQUIRED)
+FIND_PACKAGE(SharemindFacilityModuleApis REQUIRED)
 
 
 # The facility:
@@ -48,13 +48,12 @@ SharemindAddSharedLibrary("sharemind_facility_loghard"
     INCLUDE_DIRECTORIES
         ${LogHard_INCLUDE_DIRS}
         ${SharemindCxxHeaders_INCLUDE_DIRS}
-        ${SharemindLibFModapi_INCLUDE_DIRS}
+        ${SharemindFacilityModuleApis_INCLUDE_DIRS}
     COMPILE_DEFINITIONS
         "_XOPEN_SOURCE=700"
     LEGACY_DEFINITIONS
         ${LogHard_DEFINITIONS}
         ${SharemindCxxHeaders_DEFINITIONS}
-        ${SharemindLibFModapi_DEFINITIONS}
     LINK_LIBRARIES
         ${LogHard_LIBRARIES}
 )

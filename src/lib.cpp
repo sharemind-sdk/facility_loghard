@@ -30,7 +30,7 @@
 #include <set>
 #include <sharemind/compiler-support/GccPR44436.h>
 #include <sharemind/compiler-support/GccPR54526.h>
-#include <sharemind/libfmodapi/api_0x1.h>
+#include <sharemind/facility-module-apis/api_0x1.h>
 #include <string>
 #include <unordered_map>
 
