@@ -278,9 +278,9 @@ void parseConf(ModuleData & data, ::std::string & c) {
             backendHasPlace = false;
             backendHasLoggers = false;
             backendHasAppenders = false;
-            BackendFacility * const bf = new BackendFacility{};
-            lastFacility.reset(bf);
-            lastBackend = bf->backend;
+            lastFacility = std::make_shared<BackendFacility>();
+            lastBackend =
+                    static_cast<BackendFacility *>(lastFacility.get())->backend;
             lastType = LT_BACKEND;
     #define PLACE(where) \
         } else if (ISKEYWORD(#where)) { \
