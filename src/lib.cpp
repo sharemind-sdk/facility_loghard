@@ -271,6 +271,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
 
     while ((static_cast<void>(++t), !PARSE_END)) {
         if (ISKEYWORD("backend")) {
+            LOGGERPLACECHECK;
             if (!backendHasAppenders)
                 throw ParseException{"A \"backend\" has defined no appenders!"};
     parseConf_handleBackend:
