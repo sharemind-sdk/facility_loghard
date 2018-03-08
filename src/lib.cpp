@@ -242,9 +242,9 @@ void parseConf(ModuleData & data, ::std::string & c) {
     auto t = tokens.cbegin();
 
     std::shared_ptr<LogHard::Backend> lastBackend;
-    bool backendHasPlace;
-    bool backendHasLoggers;
-    bool backendHasAppenders;
+    bool backendHasPlace = false;
+    bool backendHasLoggers = false;
+    bool backendHasAppenders = false;
     bool loggerHasPlace
             = false; // silence uninitialized warning
     FacilityPointer lastFacility;
