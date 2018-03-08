@@ -248,7 +248,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
     bool loggerHasPlace
             = false; // silence uninitialized warning
     FacilityPointer lastFacility;
-    enum { LT_NONE, LT_BACKEND, LT_APPENDER, LT_LOGGER } lastType = LT_NONE;
+    enum { LT_BACKEND, LT_APPENDER, LT_LOGGER } lastType;
 
     if (PARSE_END)
         return;
@@ -270,7 +270,6 @@ void parseConf(ModuleData & data, ::std::string & c) {
     goto parseConf_handleBackend;
 
     while ((static_cast<void>(++t), !PARSE_END)) {
-        assert(lastType != LT_NONE);
         if (ISKEYWORD("backend")) {
             if (!backendHasAppenders)
                 throw ParseException{"A \"backend\" has defined no appenders!"};
