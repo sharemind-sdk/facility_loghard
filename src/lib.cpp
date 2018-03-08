@@ -228,8 +228,8 @@ tokenize_end:
     PLACE        ::= PLACETYPE <facilityName>
     LOGGER       ::= logger <logPrefix> PLACE+
     FILEOPENMODE ::= append | overwrite
-    FILEAPPENDER ::= file FILEOPENMODE <fileName> PLACE*
-    APPENDER     ::= FILEAPPENDER | stderr | stdout
+    FILEAPPENDER ::= file FILEOPENMODE <fileName>
+    APPENDER     ::= (FILEAPPENDER | stderr | stdout) PLACE*
     BACKEND      ::= backend PLACE* LOGGER+ APPENDER+ (LOGGER | APPENDER)*
     CONFIG       ::= BACKEND*
 */
