@@ -224,13 +224,16 @@ tokenize_end:
 }
 
 /*
+    PRIO_LEVEL   ::= fatal | error | warning | normal | debug | fulldebug
+    PRIORITY     ::= priority <PRIO_LEVEL>
     PLACETYPE    ::= module | pd | pdpi
     PLACE        ::= PLACETYPE <facilityName>
     LOGGER       ::= logger <logPrefix> PLACE+
     FILEOPENMODE ::= append | overwrite
     FILEAPPENDER ::= file FILEOPENMODE <fileName>
-    APPENDER     ::= (FILEAPPENDER | stderr | stdout) PLACE*
-    BACKEND      ::= backend PLACE* LOGGER+ APPENDER+ (LOGGER | APPENDER)*
+    APPENDER     ::= (FILEAPPENDER | stderr | stdout) PLACE* PRIORITY? PLACE*
+    BACKEND      ::=
+        backend PLACE* PRIORITY? PLACE* LOGGER+ APPENDER+ (LOGGER | APPENDER)*
     CONFIG       ::= BACKEND*
 */
 
@@ -242,9 +245,11 @@ void parseConf(ModuleData & data, ::std::string & c) {
     auto t = tokens.cbegin();
 
     std::shared_ptr<LogHard::Backend> lastBackend;
-    bool backendHasPlace = false;
-    bool backendHasLoggers = false;
-    bool backendHasAppenders = false;
+    bool backendHasPlace;
+    bool backendHasLoggers;
+    bool backendHasAppenders;
+    bool backendHasPriority;
+    bool appenderHasPriority;
     bool loggerHasPlace
             = false; // silence uninitialized warning
     FacilityPointer lastFacility;
@@ -278,10 +283,53 @@ void parseConf(ModuleData & data, ::std::string & c) {
             backendHasPlace = false;
             backendHasLoggers = false;
             backendHasAppenders = false;
+            backendHasPriority = false;
             lastFacility = std::make_shared<BackendFacility>();
             lastBackend =
                     static_cast<BackendFacility *>(lastFacility.get())->backend;
             lastType = LT_BACKEND;
+        } else if (ISKEYWORD("priority")) {
+            switch (lastType) {
+                case LT_BACKEND:
+                    if (backendHasPriority)
+                        throw ParseException(
+                                "Log priority already given for this backend!");
+                    break;
+                case LT_LOGGER:
+                    throw ParseException(
+                            "Loggers don't yet support log priorities!");
+                case LT_APPENDER:
+                    if (appenderHasPriority)
+                        throw ParseException("Log priority already given for "
+                                             "this appender!");
+                    break;
+            }
+            if ((static_cast<void>(++t), PARSE_END))
+                throw ParseException("No priority level name given!");
+            if (t->quoted())
+                throw ParseException("Expected priority level keyword, "
+                                     "but string was given!");
+    #define SETLOGPRIORITY(keyword, level) \
+            if (std::strcmp(t->str(), (keyword))) { \
+                if (lastType == LT_BACKEND) { \
+                    lastBackend->setPriority((level)); \
+                    backendHasPriority = true; \
+                } else { \
+                    assert(lastType == LT_APPENDER); \
+                    auto & appenderFacility = \
+                        *static_cast<AppenderFacility *>(lastFacility.get()); \
+                    appenderFacility.appender->setPriority((level)); \
+                    appenderHasPriority = true; \
+                } \
+            }
+            SETLOGPRIORITY("fatal", LogHard::Priority::Fatal)
+            else SETLOGPRIORITY("error", LogHard::Priority::Error)
+            else SETLOGPRIORITY("warning", LogHard::Priority::Warning)
+            else SETLOGPRIORITY("normal", LogHard::Priority::Normal)
+            else SETLOGPRIORITY("debug", LogHard::Priority::Debug)
+            else SETLOGPRIORITY("fulldebug", LogHard::Priority::FullDebug)
+    #undef SETLOGPRIORITY
+            else throw ParseException("Invalid log priority given!");
     #define PLACE(where) \
         } else if (ISKEYWORD(#where)) { \
             if ((static_cast<void>(++t), PARSE_END)) \
@@ -323,6 +371,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
                 lastFacility = std::make_shared<AppenderFacility>(fileAppender);
             }
             backendHasAppenders = true;
+            appenderHasPriority = false;
             lastType = LT_APPENDER;
     #define STANDARDAPPENDER(pFILE) \
         } else if (ISKEYWORD("std" #pFILE)) { \
@@ -334,6 +383,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
                 lastFacility = std::make_shared<AppenderFacility>(a); \
             } \
             backendHasAppenders = true; \
+            appenderHasPriority = false; \
             lastType = LT_APPENDER;
         STANDARDAPPENDER(err)
         STANDARDAPPENDER(out)
