@@ -29,10 +29,9 @@
 #include <memory>
 #include <set>
 #include <sharemind/compiler-support/GccPR44436.h>
-#include <sharemind/compiler-support/GccPR54526.h>
 #include <sharemind/facility-module-apis/api_0x1.h>
+#include <sharemind/SimpleUnorderedStringMap.h>
 #include <string>
-#include <unordered_map>
 
 
 namespace {
@@ -73,9 +72,7 @@ struct AppenderFacility: Facility {
     std::shared_ptr<LogHard::Appender> const appender;
 };
 
-using FacilityMap =
-        ::std::unordered_map<SHAREMIND_GCCPR54526_WORKAROUND::std::string,
-                             FacilityPointer>;
+using FacilityMap = ::sharemind::SimpleUnorderedStringMap<FacilityPointer>;
 
 struct ModuleData {
     inline ModuleData(char const * const conf);
@@ -450,7 +447,7 @@ SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c) {
         assert(c->moduleHandle); \
         auto const & map = \
                 static_cast<ModuleData *>(c->moduleHandle)->name ## Facilities;\
-        auto const it = map.find(signature); \
+        auto const it(map.find(signature)); \
         return (it == map.cend()) ? nullptr : it->second.get(); \
     }
 STUFF(module,MODULE)
