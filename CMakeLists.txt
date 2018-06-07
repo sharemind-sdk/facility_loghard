@@ -28,9 +28,9 @@ FIND_PACKAGE(SharemindCMakeHelpers REQUIRED)
 SharemindSetProjectVersion()
 
 
-FIND_PACKAGE(LogHard 0.1.0 REQUIRED)
-FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
-FIND_PACKAGE(SharemindFacilityModuleApis REQUIRED)
+FIND_PACKAGE(LogHard 0.3.0 REQUIRED)
+FIND_PACKAGE(SharemindCxxHeaders 0.4.0 REQUIRED)
+FIND_PACKAGE(SharemindFacilityModuleApis 1.0.0 REQUIRED)
 
 
 # The facility:
@@ -54,8 +54,11 @@ SharemindAddSharedLibrary("sharemind_facility_loghard"
     LEGACY_DEFINITIONS
         ${LogHard_DEFINITIONS}
         ${SharemindCxxHeaders_DEFINITIONS}
+        ${SharemindFacilityModuleApis_DEFINITIONS}
     LINK_LIBRARIES
         ${LogHard_LIBRARIES}
+        ${SharemindCxxHeaders_LIBRARIES}
+        ${SharemindFacilityModuleApis_LIBRARIES}
 )
 
 
@@ -66,7 +69,7 @@ SharemindAddComponentPackage("lib"
     DESCRIPTION "Sharemind LogHard facility"
     DEB_SECTION "libs"
     DEB_DEPENDS
-        "libloghard (>= 0.1.0)"
+        "libloghard (>= 0.3.0)"
         "libstdc++6 (>= 4.8.0)"
         "libc6 (>= 2.19)"
 )
