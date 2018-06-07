@@ -25,62 +25,47 @@
 #include <LogHard/CFileAppender.h>
 #include <LogHard/FileAppender.h>
 #include <LogHard/Logger.h>
-#include <map>
 #include <memory>
-#include <set>
-#include <sharemind/compiler-support/GccPR44436.h>
-#include <sharemind/facility-module-apis/api_0x1.h>
+#include <sharemind/facility-module-apis/api.h>
+#include <sharemind/facility-module-apis/api_0x2.h>
 #include <sharemind/SimpleUnorderedStringMap.h>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 
 namespace {
 
-struct Facility: ::SharemindModuleApi0x1Facility {
-    inline Facility(void * const facility, void * const context = nullptr)
-        : ::SharemindModuleApi0x1Facility{facility, context}
+namespace V2 = sharemind::FacilityModuleApis::v2;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+
+struct FacilityBase {
+
+    virtual std::shared_ptr<void> getFacilityPtr(std::shared_ptr<FacilityBase>)
+            noexcept = 0;
+
+};
+
+#pragma GCC diagnostic pop
+
+template <typename T>
+struct Facility final : FacilityBase, T {
+
+    template <typename ... Args>
+    Facility(Args && ... args)
+            noexcept(std::is_nothrow_constructible<T, Args...>::value)
+        : T(std::forward<Args>(args)...)
     {}
-    virtual ~Facility() noexcept {}
-};
-using FacilityPointer = ::std::shared_ptr<Facility>;
 
-struct BackendFacilityBase {
-    std::shared_ptr<LogHard::Backend> backend{
-        std::make_shared<LogHard::Backend>()};
-};
+    std::shared_ptr<void> getFacilityPtr(std::shared_ptr<FacilityBase> self)
+                noexcept final override
+    {
+        assert(self.get() == this);
+        return std::shared_ptr<void>(std::move(self), static_cast<T *>(this));
+    }
 
-struct BackendFacility: BackendFacilityBase, Facility {
-    inline BackendFacility() : Facility{backend.get()} {}
-};
-
-struct LoggerFacilityBase { std::shared_ptr<LogHard::Logger> logger; };
-struct LoggerFacility: LoggerFacilityBase, Facility {
-    template <typename ... T>
-    inline LoggerFacility(std::shared_ptr<LogHard::Backend> backend,
-                          T && ... prefix)
-        : LoggerFacilityBase{
-              std::make_shared<LogHard::Logger>(backend,
-                                                std::forward<T>(prefix)...)}
-        , Facility(logger.get())
-    {}
-};
-struct AppenderFacility: Facility {
-    inline AppenderFacility(std::shared_ptr<LogHard::Appender> a)
-        : Facility(a.get())
-        , appender(std::move(a))
-    {}
-    std::shared_ptr<LogHard::Appender> const appender;
-};
-
-using FacilityMap = ::sharemind::SimpleUnorderedStringMap<FacilityPointer>;
-
-struct ModuleData {
-    inline ModuleData(char const * const conf);
-    FacilityMap moduleFacilities;
-    FacilityMap pdFacilities;
-    FacilityMap pdpiFacilities;
-    ::std::set<FacilityPointer> anonBackends;
-    ::std::string parsedConfData;
 };
 
 class Token {
@@ -223,7 +208,7 @@ tokenize_end:
 /*
     PRIO_LEVEL   ::= fatal | error | warning | normal | debug | fulldebug
     PRIORITY     ::= priority <PRIO_LEVEL>
-    PLACETYPE    ::= module | pd | pdpi
+    PLACETYPE    ::= facilitymodule | module | pd | pdpi | process
     PLACE        ::= PLACETYPE <facilityName>
     LOGGER       ::= logger <logPrefix> PLACE+
     FILEOPENMODE ::= append | overwrite
@@ -236,20 +221,21 @@ tokenize_end:
 
 #define PARSE_END (t == tend)
 #define ISKEYWORD(k) (!t->quoted() && ::std::strcmp(t->str(), (k)) == 0)
-void parseConf(ModuleData & data, ::std::string & c) {
-    auto const tokens = tokenize(&*c.begin(), &*c.end());
+void parseConf(V2::ModuleInitContext & context) {
+    auto conf(context.moduleConfigurationString());
+    auto const tokens = tokenize(&*conf.begin(), &*conf.end());
     auto const tend = tokens.cend();
     auto t = tokens.cbegin();
 
     std::shared_ptr<LogHard::Backend> lastBackend;
+    std::shared_ptr<LogHard::Appender> lastAppenderWithoutPriority;
     bool backendHasPlace;
     bool backendHasLoggers;
     bool backendHasAppenders;
     bool backendHasPriority;
-    bool appenderHasPriority;
     bool loggerHasPlace
             = false; // silence uninitialized warning
-    FacilityPointer lastFacility;
+    std::shared_ptr<FacilityBase> lastFacility;
     enum { LT_BACKEND, LT_APPENDER, LT_LOGGER } lastType;
 
     if (PARSE_END)
@@ -281,9 +267,11 @@ void parseConf(ModuleData & data, ::std::string & c) {
             backendHasLoggers = false;
             backendHasAppenders = false;
             backendHasPriority = false;
-            lastFacility = std::make_shared<BackendFacility>();
-            lastBackend =
-                    static_cast<BackendFacility *>(lastFacility.get())->backend;
+            {
+                auto backend(std::make_shared<Facility<LogHard::Backend> >());
+                lastBackend = backend;
+                lastFacility = std::move(backend);
+            }
             lastType = LT_BACKEND;
         } else if (ISKEYWORD("priority")) {
             switch (lastType) {
@@ -296,7 +284,7 @@ void parseConf(ModuleData & data, ::std::string & c) {
                     throw ParseException(
                             "Loggers don't yet support log priorities!");
                 case LT_APPENDER:
-                    if (appenderHasPriority)
+                    if (!lastAppenderWithoutPriority)
                         throw ParseException("Log priority already given for "
                                              "this appender!");
                     break;
@@ -309,14 +297,14 @@ void parseConf(ModuleData & data, ::std::string & c) {
     #define SETLOGPRIORITY(keyword, level) \
             if (std::strcmp(t->str(), (keyword))) { \
                 if (lastType == LT_BACKEND) { \
+                    assert(lastBackend); \
                     lastBackend->setPriority((level)); \
                     backendHasPriority = true; \
                 } else { \
                     assert(lastType == LT_APPENDER); \
-                    auto & appenderFacility = \
-                        *static_cast<AppenderFacility *>(lastFacility.get()); \
-                    appenderFacility.appender->setPriority((level)); \
-                    appenderHasPriority = true; \
+                    assert(lastAppenderWithoutPriority); \
+                    lastAppenderWithoutPriority->setPriority((level)); \
+                    lastAppenderWithoutPriority.reset(); \
                 } \
             }
             SETLOGPRIORITY("fatal", LogHard::Priority::Fatal)
@@ -327,24 +315,24 @@ void parseConf(ModuleData & data, ::std::string & c) {
             else SETLOGPRIORITY("fulldebug", LogHard::Priority::FullDebug)
     #undef SETLOGPRIORITY
             else throw ParseException("Invalid log priority given!");
-    #define PLACE(where) \
-        } else if (ISKEYWORD(#where)) { \
+    #define PLACE(kw,Where,e) \
+        } else if (ISKEYWORD(kw)) { \
             if ((static_cast<void>(++t), PARSE_END)) \
-                throw ParseException{"No " #where " facility name given!"}; \
-            auto const r = \
-                    data.where ## Facilities.SHAREMIND_GCCPR44436_METHOD( \
-                            FacilityMap::value_type{t->str(), lastFacility}); \
-            if (!r.second) \
-                throw ParseException{"A " #where " facility with this name " \
-                                     "already exists!"}; \
+                throw ParseException{"No " e " facility name given!"}; \
+            context.register ## Where ## Facility( \
+                    t->str(), \
+                    lastFacility->getFacilityPtr(lastFacility)); \
             if (lastType == LT_LOGGER) { \
                 loggerHasPlace = true; \
             } else if (lastType == LT_BACKEND) { \
                 backendHasPlace = true; \
             }
-        PLACE(module)
-        PLACE(pd)
-        PLACE(pdpi)
+        PLACE("facilitymodule", FacilityModule, "facility module")
+        PLACE("module", Module, "module")
+        PLACE("pd", Pd, "PD")
+        PLACE("pdpi", Pdpi, "PDPI")
+        PLACE("process", Process, "process")
+    #undef PLACE
         } else if (ISKEYWORD("file")) {
             LOGGERSCHECK;
             LOGGERPLACECHECK;
@@ -359,41 +347,43 @@ void parseConf(ModuleData & data, ::std::string & c) {
             }());
             if ((static_cast<void>(++t), PARSE_END))
                 throw ParseException{"Incomplete \"file\" definition!"};
-            ;
             {
                 auto fileAppender(
-                            std::make_shared<LogHard::FileAppender>(t->str(),
-                                                                    openMode));
+                            std::make_shared<Facility<LogHard::FileAppender> >(
+                                t->str(),
+                                openMode));
                 lastBackend->addAppender(fileAppender);
-                lastFacility = std::make_shared<AppenderFacility>(fileAppender);
+                lastAppenderWithoutPriority = fileAppender;
+                lastFacility = std::move(fileAppender);
             }
             backendHasAppenders = true;
-            appenderHasPriority = false;
             lastType = LT_APPENDER;
     #define STANDARDAPPENDER(pFILE) \
         } else if (ISKEYWORD("std" #pFILE)) { \
             LOGGERSCHECK; \
             LOGGERPLACECHECK; \
             { \
-                auto a(std::make_shared<LogHard::CFileAppender>(std ## pFILE));\
-                lastBackend->addAppender(a); \
-                lastFacility = std::make_shared<AppenderFacility>(a); \
+                auto appender( \
+                        std::make_shared<Facility<LogHard::CFileAppender> >( \
+                                std ## pFILE));\
+                lastBackend->addAppender(appender); \
+                lastAppenderWithoutPriority = appender; \
+                lastFacility = std::move(appender); \
             } \
             backendHasAppenders = true; \
-            appenderHasPriority = false; \
             lastType = LT_APPENDER;
         STANDARDAPPENDER(err)
         STANDARDAPPENDER(out)
+    #undef STANDARDAPPENDER
         } else if (ISKEYWORD("logger")) {
-            if (!backendHasPlace) {
-                data.anonBackends.SHAREMIND_GCCPR44436_METHOD(lastFacility);
+            if (!backendHasPlace)
                 backendHasPlace = true;
-            }
             LOGGERPLACECHECK;
             if ((static_cast<void>(++t), PARSE_END))
                 throw ParseException{"Incomplete \"logger\" definition!"};
             lastFacility =
-                    std::make_shared<LoggerFacility>(lastBackend, t->str());
+                    std::make_shared<Facility<LogHard::Logger> >(lastBackend,
+                                                                 t->str());
             lastType = LT_LOGGER;
             backendHasLoggers = true;
             loggerHasPlace = false;
@@ -405,53 +395,12 @@ void parseConf(ModuleData & data, ::std::string & c) {
         throw ParseException{"A \"backend\" has defined no appenders!"};
 }
 
-inline ModuleData::ModuleData(char const * const conf)
-    : parsedConfData{conf ? conf : ""}
-{ parseConf(*this, parsedConfData); }
-
 } // anonymous namespace
 
 extern "C" {
 
-SHAREMIND_FACILITY_MODULE_API_MODULE_INFO("LogHardFacility", 1u, 1u);
-
-SHAREMIND_FACILITY_MODULE_API_0x1_INITIALIZER(c,errorStr);
-SHAREMIND_FACILITY_MODULE_API_0x1_INITIALIZER(c,errorStr) {
-    assert(c);
-    try {
-        c->moduleHandle = new ModuleData{c->conf};
-        return ::SHAREMIND_FACILITY_MODULE_API_0x1_OK;
-    } catch (::std::bad_alloc const &) {
-        return ::SHAREMIND_FACILITY_MODULE_API_0x1_OUT_OF_MEMORY;
-    } catch (ParseException const & e) {
-        if (errorStr)
-            (*errorStr) = e.what();
-        return ::SHAREMIND_FACILITY_MODULE_API_0x1_INVALID_CONFIGURATION;
-    } catch (...) {
-        return ::SHAREMIND_FACILITY_MODULE_API_0x1_MODULE_ERROR;
-    }
-}
-
-SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c);
-SHAREMIND_FACILITY_MODULE_API_0x1_DEINITIALIZER(c) {
-    assert(c);
-    assert(c->moduleHandle);
-    delete static_cast<ModuleData *>(c->moduleHandle);
-}
-
-#define STUFF(name,NAME) \
-    SHAREMIND_FACILITY_MODULE_API_0x1_FIND_ ## NAME ## _FACILITY(c, signature);\
-    SHAREMIND_FACILITY_MODULE_API_0x1_FIND_ ## NAME ## _FACILITY(c, signature) \
-    { \
-        assert(c); \
-        assert(c->moduleHandle); \
-        auto const & map = \
-                static_cast<ModuleData *>(c->moduleHandle)->name ## Facilities;\
-        auto const it(map.find(signature)); \
-        return (it == map.cend()) ? nullptr : it->second.get(); \
-    }
-STUFF(module,MODULE)
-STUFF(pd,PD)
-STUFF(pdpi,PDPI)
+SHAREMIND_FACILITY_MODULE_API_MODULE_INFO("LogHardFacility", 2u, 2u);
+extern V2::FacilityModuleInfo sharemindFacilityModuleInfo_v2;
+V2::FacilityModuleInfo sharemindFacilityModuleInfo_v2{parseConf};
 
 } // extern "C" {
