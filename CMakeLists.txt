@@ -78,6 +78,6 @@ SharemindAddComponentPackage("debug"
     DESCRIPTION "Sharemind LogHard facility debug symbols"
     DEB_SECTION "debug"
     DEB_DEPENDS
-        "libsharemind-facility-loghard (= ${SharemindFacilityLogHard_VERSION})"
+        "libsharemind-facility-loghard (= ${SharemindFacilityLogHard_DEB_lib_PACKAGE_VERSION})"
 )
 SharemindPackagingFinalize()
