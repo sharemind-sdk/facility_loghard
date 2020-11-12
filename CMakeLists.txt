@@ -31,7 +31,6 @@ FIND_PACKAGE(SharemindFacilityModuleApis 2.1.0 REQUIRED)
 
 
 # The facility:
-SharemindSetCxx14CompileOptions()
 FILE(GLOB_RECURSE SharemindFacilityLogHard_HEADERS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 FILE(GLOB_RECURSE SharemindFacilityLogHard_SOURCES
